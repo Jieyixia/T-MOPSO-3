@@ -29,7 +29,7 @@ function leader=SelectLeader(rep, beta, pop)
     
     index = find(t == min(t));
     
-    if numel(index) < numel(pop.ChebychevDistance)
+    if numel(index) <= numel(pop.ChebychevDistance)
         k = ceil(rand * numel(index));
         leader = rep(index(k));
         return
