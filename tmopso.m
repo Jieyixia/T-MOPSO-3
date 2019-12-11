@@ -11,7 +11,7 @@
 % Contact Info: sm.kalami@gmail.com, info@yarpiz.com
 %
 
-function tmopso(seed, func_name, TargetRegion, epsilon)
+function it = tmopso(seed, func_name, TargetRegion, epsilon, It_no)
 %% Load True Pareto Front
 load true_pf.mat true_pf
 
@@ -31,11 +31,11 @@ switch func_name
         VarMin = ones(1,  nVar) * (-4);
         true_pf = true_pf{2};
         
-    case 'kur'
-        CostFunction = @(x)KUR(x);
-        nVar = 3;
-        VarMax = ones(1,  nVar) * 5;
-        VarMin = ones(1,  nVar) * (-5);
+%     case 'kur'
+%         CostFunction = @(x)KUR(x);
+%         nVar = 3;
+%         VarMax = ones(1,  nVar) * 5;
+%         VarMin = ones(1,  nVar) * (-5);
         
     case 'zdt1'
         CostFunction = @(x)ZDT1(x);
@@ -71,6 +71,56 @@ switch func_name
         VarMax = ones(1,  nVar);
         VarMin = zeros(1,  nVar);    
         true_pf = true_pf{6};
+        
+    case 'dtlz1'
+        CostFunction = @(x)dtlz1(x, 3);
+        nVar = 7;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{8}';
+        
+    case 'dtlz2'
+        CostFunction = @(x)dtlz2(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{9}';
+        
+    case 'dtlz3'
+        CostFunction = @(x)dtlz3(x, 3);
+        nVar = 7;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{10}';
+        
+    case 'dtlz4'
+        CostFunction = @(x)dtlz4(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{11}';
+
+    case 'dtlz5'
+        CostFunction = @(x)dtlz5(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{8}';
+        
+    case 'dtlz6'
+        CostFunction = @(x)dtlz6(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{9}';
+
+    case 'dtlz7'
+        CostFunction = @(x)dtlz7(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{8}';
+        
 end
 
 VarSize=[1 nVar];   % Size of Decision Variables Matrix
@@ -80,7 +130,7 @@ VarSize=[1 nVar];   % Size of Decision Variables Matrix
 if isequal(func_name, 'zdt4')
     MaxIt = 1000;           % Maximum Number of Iterations
 else
-    MaxIt = 100;
+    MaxIt = 1000;
 end
 
 % MaxIt=1000;           % Maximum Number of Iterations
@@ -111,12 +161,12 @@ empty_particle.Velocity=[];
 empty_particle.Cost=[];
 empty_particle.Best.Position=[];
 empty_particle.Best.Cost=[];
-empty_particle.Best.ChebychevDistance=[];
 empty_particle.IsDominated=[];
 empty_particle.GridIndex=[];
 empty_particle.GridSubIndex=[];
 empty_particle.ChebychevDistance=[];
 empty_particle.ChebychevRank = [];
+empty_particle.TargetRegionFlag = [];  % show whch target region the particle is in
 
 pop=repmat(empty_particle,nPop,1);
  
@@ -127,13 +177,11 @@ for i=1:nPop
     pop(i).Velocity=zeros(VarSize);   
     pop(i).Cost=CostFunction(pop(i).Position);
     pop(i).ChebychevDistance=GetChebychevDistance(pop(i).Cost, TargetRegion);
+    pop(i).TargetRegionFlag=GetTargetRegionFlag(pop(i).Cost, TargetRegion);
     
-    % Update Personal Best
-    
+    % Update Personal Best   
     pop(i).Best.Position=pop(i).Position;
     pop(i).Best.Cost=pop(i).Cost;
-    pop(i).Best.ChebychevDistance=pop(i).ChebychevDistance;
-    
     
 end
 
@@ -155,17 +203,18 @@ rep=DetermineChebychevRank(rep, epsilon);
 
 %% MOPSO Main Loop
 
-tr_num = zeros(MaxIt, 1);
 for it=1:MaxIt
+    
     disp(['It-' num2str(it)])
+    
     for i=1:nPop
 
-        leader=SelectLeader(rep, beta, pop(i));
+        leader=SelectLeader(rep, beta, pop(i));  % choose one with smallest chebychev rank
         
 %         figure(3)
 %         plot(leader.Cost(1), leader.Cost(2), 'o')
 %         grid on;
-%         for r = 1 : numel(TargetRegion)
+%         for r = 1  : numel(TargetRegion)
 %         lb = TargetRegion(r).lb;
 %         ub = TargetRegion(r).ub;
 %         plot([lb(1) ub(1) ub(1) lb(1) lb(1)], [lb(2) lb(2) ub(2) ub(2) lb(2)], 'b')
@@ -183,63 +232,52 @@ for it=1:MaxIt
         pop(i).Position = min(pop(i).Position, VarMax);
         
         pop(i).Cost = CostFunction(pop(i).Position);
-        pop(i).ChebychevDistance = GetChebychevDistance(pop(i).Cost, TargetRegion);
         
         % Apply Mutation
         pm=(1-(it-1)/(MaxIt-1))^(1/mu);
         if rand<pm
             NewSol.Position=Mutate(pop(i).Position,pm,VarMin,VarMax);
             
-            % make the solution feasible -----------------------
+            % make the solution feasible
             NewSol.Position = max(NewSol.Position, VarMin);
             NewSol.Position = min(NewSol.Position, VarMax);
-            % make the solution feasible -----------------------
-            
+                        
             NewSol.Cost=CostFunction(NewSol.Position);
-            NewSol.ChebychevDistance = GetChebychevDistance(NewSol.Cost, TargetRegion);
+            
             if Dominates(NewSol,pop(i))
                 pop(i).Position=NewSol.Position;
                 pop(i).Cost=NewSol.Cost;
-                pop(i).ChebychevDistance = NewSol.ChebychevDistance;
 
             elseif Dominates(pop(i),NewSol)
                 % Do Nothing
 
             else
-%                 if  pop(i).ChebychevDistance > NewSol.ChebychevDistance
-%                     pop(i).Position=NewSol.Position;
-%                     pop(i).Cost=NewSol.Cost;
-%                     pop(i).ChebychevDistance = NewSol.ChebychevDistance;
-%                 end
                 if rand<0.5
                     pop(i).Position=NewSol.Position;
                     pop(i).Cost=NewSol.Cost;
-                    pop(i).ChebychevDistance=NewSol.ChebychevDistance;
         
                 end
             end
         end
         
+        % compare with personal best
         if Dominates(pop(i),pop(i).Best)
             pop(i).Best.Position=pop(i).Position;
             pop(i).Best.Cost=pop(i).Cost;
-            pop(i).Best.ChebychevDistance = pop(i).ChebychevDistance;
             
         elseif Dominates(pop(i).Best,pop(i))
             % Do Nothing
             
         else
-%             if  pop(i).Best.ChebychevDistance > pop(i).ChebychevDistance
-%                 pop(i).Best.Position=pop(i).Position;
-%                 pop(i).Best.Cost=pop(i).Cost;
-%                 pop(i).Best.ChebychevDistance = pop(i).ChebychevDistance;
-%             end
             if rand<0.5
                 pop(i).Best.Position=pop(i).Position;
                 pop(i).Best.Cost=pop(i).Cost;
-                pop(i).Best.ChebychevDistance=pop(i).ChebychevDistance;
             end
         end
+        
+        % update chebychev distance and target region flag
+        pop(i).ChebychevDistance=GetChebychevDistance(pop(i).Cost, TargetRegion);
+        pop(i).TargetRegionFlag=GetTargetRegionFlag(pop(i).Cost, TargetRegion);
         
     end
     
@@ -252,13 +290,14 @@ for it=1:MaxIt
     % Determine Domination of New Resository Members
     rep=DetermineDomination(rep);
     
-    % Keep only Non-Dminated Memebrs in the Repository
+    % Keep only Non-Dminated Members in the Repository
     rep=rep(~[rep.IsDominated]);
     
     % Determine Chebychev Rank
     rep=DetermineChebychevRank(rep, epsilon);
     
-    
+    % Update Target Region
+    TargetRegion=UpdateTargetRegion(rep, TargetRegion);
     
 %     % Update Grid
 %     Grid=CreateGrid(rep,nGrid,alpha);
@@ -277,24 +316,40 @@ for it=1:MaxIt
         end
         
     end
-%     tr_num(it) = sum([rep.ChebychevDistance] == 0);
     
-%     disp(['It-' num2str(it, '%04d') ' Num of Particles:' num2str(tr_num(it), '%04d') ' Proportion:' num2str(tr_num(it)/nPop, '%.4f')])
-    % Plot Costs
+    flag = HasArrivedPF(rep, true_pf);
+    
+    if flag     
+        % draw
+        h = figure(1);
+        PlotPareto(rep, func_name, true_pf, TargetRegion);
+%         set(h,'visible','off');
+        
+        % save plot
+        path = ['figure/', func_name];
+        if ~exist(path,'dir')
+            mkdir(path);
+        end
+        
+        filename = [path, '/', func_name, '-', num2str(It_no)];
+        saveas(h, filename, 'png');
+        break
+    end
+    
+%     % Plot Costs
+
+%     figure(1)
+%     PlotCosts(pop,rep, TargetRegion);
+    
     figure(1)
-    PlotCosts(pop,rep, TargetRegion);
-    
-    figure(2)
     PlotPareto(rep, func_name, true_pf, TargetRegion);
-    pause(0.001);
+
+%     pause(0.001);
     
     % Damping Inertia Weight
     w=w*wdamp;
     
 
 end
-% figure;
-% plot(1:MaxIt, tr_num/nRep)
-% disp(['目标区域内最大粒子数: ' num2str(max(tr_num))])
 end
 

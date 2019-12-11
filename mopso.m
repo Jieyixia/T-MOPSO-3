@@ -243,13 +243,13 @@ for it=1:MaxIt
     % Keep only Non-Dminated Memebrs in the Repository
     rep=rep(~[rep.IsDominated]);
     
-    % Update Grid
-    Grid=CreateGrid(rep,nGrid,alpha);
-
-    % Update Grid Indices
-    for i=1:numel(rep)
-        rep(i)=FindGridIndex(rep(i),Grid);
-    end
+%     % Update Grid
+%     Grid=CreateGrid(rep,nGrid,alpha);
+% 
+%     % Update Grid Indices
+%     for i=1:numel(rep)
+%         rep(i)=FindGridIndex(rep(i),Grid);
+%     end
     
     % Check if Repository is Full
     if numel(rep)>nRep
@@ -271,7 +271,7 @@ for it=1:MaxIt
     w=w*wdamp;
     
     % Show Iteration Information
-   hv = hypervolume([rep.Cost]);
+    hv = hypervolume([rep.Cost]);
     gd = generational_distance(rep, true_pf);
     inverted_gd = IGD(rep, true_pf);
     sp = spacing([rep.Cost]);

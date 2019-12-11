@@ -35,17 +35,17 @@ function leader=SelectLeader(rep, beta, pop)
         return
     end
     
-    [~, k] = min(pop.ChebychevDistance); % 找到粒子与哪个目标区域距离最近
-    
-    
-    % 找到对应目标区域中Chebychev Rank=0的粒子  
-    for i = 1 : numel(index)
-        if CheRank(k, index(i)) == 0
-            leader = rep(index(i));
-            return
-        end
-    end
-    
+%     [~, k] = min(pop.ChebychevDistance); % 找到粒子与哪个目标区域距离最近
+%     
+%     
+%     % 找到对应目标区域中Chebychev Rank=0的粒子  
+%     for i = 1 : numel(index)
+%         if CheRank(k, index(i)) == 0
+%             leader = rep(index(i));
+%             return
+%         end
+%     end
+%     
     
 %     %% Method 4: shortest distance from nearest target region
 %     ChebychevDistance = [rep.ChebychevDistance];
