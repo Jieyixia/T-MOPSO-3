@@ -1,8 +1,15 @@
-function pop = DetermineChebychevRank(pop, epsilon)
+function pop = DetermineChebychevRank(pop, TargetRegion, epsilon)
     nPop = numel(pop);
-    nTR = numel(pop(1).ChebychevDistance);
+    nTR = numel(TargetRegion);
     MaxDch = floor(nPop/nTR);
-
+    
+    
+    % Calculate Chebychev Distance 
+    % 也就是说，只计算repository中粒子与目标区域的切比雪夫距离
+    for j = 1 : nPop
+        pop(j).ChebychevDistance=GetChebychevDistance(pop(j).Cost, TargetRegion);
+    end
+    
     % Calculate Chebychev Rank
     CheDist = [pop.ChebychevDistance];
     

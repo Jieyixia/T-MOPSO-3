@@ -33,9 +33,19 @@ function PlotCosts(pop,rep, target_region)
 
         
     else
-        plot3(pop_costs(1,:), pop_costs(2,:), pop_costs(3, :), 'ko');
+        angle = [180 0 0] * pi / 180;
+        
+        quaternion = angle2quat(angle(1),angle(2),angle(3));
+        
+        rotated_pop_cost = quatrotate(quaternion, pop_costs');
+        
+        scatter3(rotated_pop_cost(:, 1), rotated_pop_cost(:, 2), rotated_pop_cost(:, 3), 10, 'co', 'filled')
+        
         hold on;
-        plot3(rep_costs(1,:), rep_costs(2,:), rep_costs(3, :), 'r*');
+        
+        rotated_rep_costs = quatrotate(quaternion, rep_costs');
+        
+        scatter3(rotated_rep_costs(:, 1), rotated_rep_costs(:, 2), rotated_rep_costs(:, 3), 'r*')
         
         for i = 1 : numel(target_region)
             lb = target_region(i).lb;
@@ -53,8 +63,14 @@ function PlotCosts(pop,rep, target_region)
 
             edges_bottom = [A; B; C; D; A];
             edges_top = [E; F; G; H; E];
+            
+            edges_bottom = quatrotate(quaternion, edges_bottom);
+            edges_top = quatrotate(quaternion, edges_top);
 
             plot3(edges_bottom(:, 1), edges_bottom(:, 2), edges_bottom(:, 3), 'r'); 
+            hold on
+
+            plot3(edges_top(:, 1), edges_top(:, 2), edges_top(:, 3), 'r');  
             hold on
 
             plot3(edges_top(:, 1), edges_top(:, 2), edges_top(:, 3), 'r');  
@@ -64,7 +80,12 @@ function PlotCosts(pop,rep, target_region)
             BF = [B; F];       
             CG = [C; G];        
             DH = [D; H];
-
+            
+            AE = quatrotate(quaternion, AE);
+            BF = quatrotate(quaternion, BF);
+            CG = quatrotate(quaternion, CG);
+            DH = quatrotate(quaternion, DH);
+            
             plot3(AE(:, 1), AE(:, 2), AE(:, 3), 'r')  
             hold on
 

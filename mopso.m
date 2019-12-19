@@ -11,7 +11,8 @@
 % Contact Info: sm.kalami@gmail.com, info@yarpiz.com
 %
 
-function [gd_save, inverted_gd_save, hv_save, sp_save, delta_save, repository] = mopso(seed, func_name)
+function [rep, it] = mopso(seed, func_name, MaxIt, It_no)
+disp(['MOPSO:It-' num2str(It_no)])
 %% Problem Definition
 load true_pf.mat true_pf
 %% Problem Definition
@@ -70,21 +71,66 @@ switch func_name
         VarMax = ones(1,  nVar);
         VarMin = zeros(1,  nVar);    
         true_pf = true_pf{6};
+        
+    case 'dtlz1'
+        CostFunction = @(x)dtlz1(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{8};
+        
+    case 'dtlz2'
+        CostFunction = @(x)dtlz2(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{9};
+        
+    case 'dtlz3'
+        CostFunction = @(x)dtlz3(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{10};
+        
+    case 'dtlz4'
+        CostFunction = @(x)dtlz4(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+        true_pf = true_pf{11};
+
+    case 'dtlz5'
+        CostFunction = @(x)dtlz5(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{12};
+        
+    case 'dtlz6'
+        CostFunction = @(x)dtlz6(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{13};
+
+    case 'dtlz7'
+        CostFunction = @(x)dtlz7(x, 3);
+        nVar = 10;
+        VarMax = ones(1, nVar);
+        VarMin = zeros(1, nVar);
+%         true_pf = true_pf{14};
+        
 end
 
 VarSize=[1 nVar];   % Size of Decision Variables Matrix
 
 
 %% MOPSO Parameters
-if isequal(func_name, 'zdt4')
-    MaxIt = 100;           % Maximum Number of Iterations
-else
-    MaxIt = 30;
-end
 
 % MaxIt=1000;           % Maximum Number of Iterations
-nPop=40;            % Population Size
-nRep=40;            % Repository Size
+nPop=50;            % Population Size
+nRep=50;            % Repository Size
 
 w=0.5;              % Inertia Weight
 wdamp=0.99;         % Intertia Weight Damping Rate
@@ -109,30 +155,24 @@ empty_particle.Velocity=[];
 empty_particle.Cost=[];
 empty_particle.Best.Position=[];
 empty_particle.Best.Cost=[];
-empty_particle.Best.TargetDist=[];
 empty_particle.IsDominated=[];
 empty_particle.GridIndex=[];
 empty_particle.GridSubIndex=[];
-empty_particle.TargetDist=[];
 
 pop=repmat(empty_particle,nPop,1);
 
-target_region.lb = [0.3 0.5];
-target_region.ub = [0.6 1];
-
 for i=1:nPop
     
-    pop(i).Position=unifrnd(VarMin,VarMax,VarSize);  
-    pop(i).Velocity=zeros(VarSize);   
+    pop(i).Position=unifrnd(VarMin,VarMax,VarSize);
+    
+    pop(i).Velocity=zeros(VarSize);
+    
     pop(i).Cost=CostFunction(pop(i).Position);
-    pop(i).TargetDist = GetTargetDist(pop(i).Cost, target_region);
+    
     
     % Update Personal Best
-    
     pop(i).Best.Position=pop(i).Position;
     pop(i).Best.Cost=pop(i).Cost;
-    pop(i).Best.TargetDist=pop(i).TargetDist;
-    
     
 end
 
@@ -149,20 +189,18 @@ end
 
 
 %% MOPSO Main Loop
-gd_save = zeros(MaxIt, 1);
-inverted_gd_save = zeros(MaxIt, 1);
-hv_save = zeros(MaxIt, 1);
-sp_save = zeros(MaxIt, 1);
-delta_save = zeros(MaxIt, 1);
-
-repository = cell(MaxIt, 1);
-
-tr_num = zeros(MaxIt, 1);
+% gd_save = zeros(MaxIt, 1);
+% inverted_gd_save = zeros(MaxIt, 1);
+% hv_save = zeros(MaxIt, 1);
+% sp_save = zeros(MaxIt, 1);
+% delta_save = zeros(MaxIt, 1);
+% 
+% repository = cell(MaxIt, 1);
 for it=1:MaxIt
-
+%     disp(['It-', num2str(it)])
     for i=1:nPop
 
-        leader=SelectLeader(rep, beta);
+        leader=SelectLeader_mopso(rep,beta);
         
         pop(i).Velocity = w*pop(i).Velocity ...
             +c1*rand(VarSize).*(pop(i).Best.Position-pop(i).Position) ...
@@ -176,7 +214,7 @@ for it=1:MaxIt
         % test------------------------------------------------
         
         pop(i).Cost = CostFunction(pop(i).Position);
-        pop(i).TargetDist = GetTargetDist(pop(i).Cost, target_region);
+        
         % Apply Mutation
         pm=(1-(it-1)/(MaxIt-1))^(1/mu);
         if rand<pm
@@ -186,48 +224,53 @@ for it=1:MaxIt
             NewSol.Position = min(NewSol.Position, VarMax);
             % test---------------------------------------------
             NewSol.Cost=CostFunction(NewSol.Position);
-            NewSol.TargetDist = GetTargetDist(NewSol.Cost, target_region);
             if Dominates(NewSol,pop(i))
                 pop(i).Position=NewSol.Position;
                 pop(i).Cost=NewSol.Cost;
-                pop(i).TargetDist = NewSol.TargetDist;
 
             elseif Dominates(pop(i),NewSol)
                 % Do Nothing
 
             else
-                if  pop(i).TargetDist > NewSol.TargetDist
+                if rand<0.5
                     pop(i).Position=NewSol.Position;
                     pop(i).Cost=NewSol.Cost;
-                    pop(i).TargetDist = NewSol.TargetDist;
                 end
-%                 if rand<0.5
-%                     pop(i).Position=NewSol.Position;
-%                     pop(i).Cost=NewSol.Cost;
-%                 end
             end
         end
         
         if Dominates(pop(i),pop(i).Best)
             pop(i).Best.Position=pop(i).Position;
             pop(i).Best.Cost=pop(i).Cost;
-            pop(i).Best.TargetDist = pop(i).TargetDist;
+            
         elseif Dominates(pop(i).Best,pop(i))
             % Do Nothing
             
         else
-            if  pop(i).Best.TargetDist > pop(i).TargetDist
+            if rand<0.5
                 pop(i).Best.Position=pop(i).Position;
                 pop(i).Best.Cost=pop(i).Cost;
-                pop(i).Best.TargetDist = pop(i).TargetDist;
             end
-%             if rand<0.5
-%                 pop(i).Best.Position=pop(i).Position;
-%                 pop(i).Best.Cost=pop(i).Cost;
-%             end
         end
         
     end
+    
+%     % 每隔20代进行一次反向学习
+%     if mod(it, 5) == 0
+%         
+%         for i = 1 : nPop
+%             OblSol.Position = obl(pop(i).Position, VarMin, VarMax);
+%             OblSol.Cost = CostFunction(OblSol.Position);
+%             if Dominates(OblSol,pop(i))
+%                 pop(i).Position=OblSol.Position;
+%                 pop(i).Cost=OblSol.Cost;
+%             end
+%             if Dominates(pop(i),pop(i).Best)
+%                 pop(i).Best.Position=pop(i).Position;
+%                 pop(i).Best.Cost=pop(i).Cost;
+%             end
+%         end
+%     end
     
     % update pop---------------------------------------------
     pop=DetermineDomination(pop); % 这是自己加的，这一行原代码中没有
@@ -243,64 +286,58 @@ for it=1:MaxIt
     % Keep only Non-Dminated Memebrs in the Repository
     rep=rep(~[rep.IsDominated]);
     
-%     % Update Grid
-%     Grid=CreateGrid(rep,nGrid,alpha);
-% 
-%     % Update Grid Indices
-%     for i=1:numel(rep)
-%         rep(i)=FindGridIndex(rep(i),Grid);
-%     end
+    % Update Grid
+    Grid=CreateGrid(rep,nGrid,alpha);
+
+    % Update Grid Indices
+    for i=1:numel(rep)
+        rep(i)=FindGridIndex(rep(i),Grid);
+    end
     
     % Check if Repository is Full
     if numel(rep)>nRep
         
         Extra=numel(rep)-nRep;
         for e=1:Extra
-            rep=DeleteOneRepMember(rep,gamma);
+            rep=DeleteOneRepMemebr(rep,gamma);
         end
         
     end
-    tr_num(it) = sum([rep.TargetDist] == 0);
-%     % Plot Costs
-    figure(1);
-%     PlotCosts(pop,rep, target_region);
-    PlotPareto(rep, func_name, true_pf, target_region);
-    pause(0.001);
     
-%     % Damping Inertia Weight
-    w=w*wdamp;
     
-    % Show Iteration Information
-    hv = hypervolume([rep.Cost]);
-    gd = generational_distance(rep, true_pf);
-    inverted_gd = IGD(rep, true_pf);
-    sp = spacing([rep.Cost]);
-    d = delta(rep, true_pf);
-    
-    gd_save(it) = gd;
-    inverted_gd_save(it) = inverted_gd;
-    hv_save(it) = hv;
-    sp_save(it) = sp;
-    delta_save(it) = d;
-    repository{it} = [rep.Cost];
-    
-    disp([func_name ' ' num2str(it) ': Rep Size=' num2str(numel(rep)) ', HV=' num2str(hv, '%.4f') ', GD=' num2str(gd, '%.4f'), ', SP=' num2str(sp, '%.4f')]);
-
-    disp(['delta = ' num2str(d, '%.4f')])
-%     if numel(gd_repo) < 10
-%         gd_repo = [gd_repo gd];
-%         continue
-%     end
-% 
-%     if mean(gd_repo) < 1e-3 && std(gd_repo) < mean(gd_repo) * 0.05
+    % If Exists Particles that Reach the PF
+%     flag = HasArrivedPF(rep, true_pf);
+%     
+%     if flag     
+%         % draw
+%         h = figure(1);
+%         PlotPareto_mopso(rep, func_name, true_pf);
+% %         set(h,'visible','off');
+%         
+%         % save plot
+%         path = ['figure/', func_name];
+%         if ~exist(path,'dir')
+%             mkdir(path);
+%         end
+%         
+%         filename = [path, '/', func_name, '-', num2str(It_no)];
+%         saveas(h, filename, 'png');
 %         break
 %     end
-%     
-%     gd_repo(1) = [];
-%     gd_repo = [gd_repo gd];
+   
+%     % Plot Costs
+    figure(1);
+    PlotCosts_mopso(pop,rep);
+%     PlotPareto_mopso(rep, func_name, true_pf);
+%     pause(0.001);
+    
+    % Damping Inertia Weight
+    w=w*wdamp;
+    
+
     
 end
-% figure
-% PlotPareto(rep, func_name, true_pf);
+% gd = generational_distance(rep, true_pf);
+pf_mopso = [rep.Cost];
 end
 

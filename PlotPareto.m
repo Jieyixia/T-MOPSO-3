@@ -24,7 +24,7 @@ function PlotPareto(rep, func_name, true_pf, target_region)
         
         for i = 1 : 5
             
-            plot(true_pf(1, cur + 1 : cur + sec(i)), true_pf(2, cur + 1 : cur + sec(i)))
+            plot(true_pf(1, cur + 1 : cur + sec(i)), true_pf(2, cur + 1 : cur + sec(i)), 'c')
             
             hold on
             
@@ -34,7 +34,7 @@ function PlotPareto(rep, func_name, true_pf, target_region)
         
     else
         
-        plot(true_pf(1, :), true_pf(2, :))
+        plot(true_pf(1, :), true_pf(2, :), 'c')
         
     end
     
@@ -48,15 +48,15 @@ function PlotPareto(rep, func_name, true_pf, target_region)
         
         quaternion = angle2quat(angle(1),angle(2),angle(3));
         
-        rotated_pf = quatrotate(quaternion, true_pf');
+        rotated_pf = quatrotate(quaternion, true_pf);
         
-        scatter3(rotated_pf(:, 1), rotated_pf(:, 2), rotated_pf(:, 3), 'b+')
+        scatter3(rotated_pf(:, 1), rotated_pf(:, 2), rotated_pf(:, 3), 10, 'co', 'filled')
         
         hold on;
         
         rotated_cost = quatrotate(quaternion, Cost');
         
-        scatter3(rotated_cost(:, 1), rotated_cost(:, 2), rotated_cost(:, 3))
+        scatter3(rotated_cost(:, 1), rotated_cost(:, 2), rotated_cost(:, 3), 'r*')
         
     end
 

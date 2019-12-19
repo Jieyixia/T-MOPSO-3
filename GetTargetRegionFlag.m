@@ -1,33 +1,43 @@
-function TargetRegionFlag = GetTargetRegionFlag(cost, TargetRegion)
+function pop = GetTargetRegionFlag(pop, TargetRegion)
 
-nObj = length(cost);
+nPop = numel(pop);
+
+nObj = length(pop(1).Cost);
 
 nTR = numel(TargetRegion);
 
-TargetRegionFlag = ones(nTR, 1);
-
-for i = 1 : nTR
+for i = 1 : nPop
     
-    for j = 1 : nObj
-        
-        if cost(j) > TargetRegion(i).ub(j)
-            
-            TargetRegionFlag(i) = 0;
-            
-            break
-            
-        end
-        
-        if cost(j) < TargetRegion(i).lb(j)
-            
-            TargetRegionFlag(i) = 0;
-            
-            break
-            
-        end      
-        
-    end
+    cost = pop(i).Cost;
+    
+    TargetRegionFlag = ones(nTR, 1);
+    
+    for j = 1 : nTR
 
+        for k = 1 : nObj
+
+            if cost(k) > TargetRegion(j).ub(k)
+
+                TargetRegionFlag(j) = 0;
+
+                break
+
+            end
+
+            if cost(k) < TargetRegion(j).lb(k)
+
+                TargetRegionFlag(j) = 0;
+
+                break
+
+            end      
+
+        end
+    
+    end
+    
+    pop(i).TargetRegionFlag = TargetRegionFlag;
+    
 end
 
 end

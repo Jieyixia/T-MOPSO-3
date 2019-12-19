@@ -11,7 +11,8 @@
 % Contact Info: sm.kalami@gmail.com, info@yarpiz.com
 %
 
-function it = tmopso(seed, func_name, TargetRegion, epsilon, It_no)
+function [rep, TargetRegion] = tmopso(seed, func_name, TargetRegion, epsilon, It_no, MaxIt)
+disp(['T-MOPSO:It-' num2str(It_no)])
 %% Load True Pareto Front
 load true_pf.mat true_pf
 
@@ -74,52 +75,52 @@ switch func_name
         
     case 'dtlz1'
         CostFunction = @(x)dtlz1(x, 3);
-        nVar = 7;
+        nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-        true_pf = true_pf{8}';
+        true_pf = true_pf{8};
         
     case 'dtlz2'
         CostFunction = @(x)dtlz2(x, 3);
         nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-        true_pf = true_pf{9}';
+        true_pf = true_pf{9};
         
     case 'dtlz3'
         CostFunction = @(x)dtlz3(x, 3);
-        nVar = 7;
+        nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-        true_pf = true_pf{10}';
+        true_pf = true_pf{10};
         
     case 'dtlz4'
         CostFunction = @(x)dtlz4(x, 3);
         nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-        true_pf = true_pf{11}';
+        true_pf = true_pf{11};
 
     case 'dtlz5'
         CostFunction = @(x)dtlz5(x, 3);
         nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-%         true_pf = true_pf{8}';
+%         true_pf = true_pf{8};
         
     case 'dtlz6'
         CostFunction = @(x)dtlz6(x, 3);
         nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-%         true_pf = true_pf{9}';
+%         true_pf = true_pf{9};
 
     case 'dtlz7'
         CostFunction = @(x)dtlz7(x, 3);
         nVar = 10;
         VarMax = ones(1, nVar);
         VarMin = zeros(1, nVar);
-%         true_pf = true_pf{8}';
+%         true_pf = true_pf{8};
         
 end
 
@@ -127,11 +128,7 @@ VarSize=[1 nVar];   % Size of Decision Variables Matrix
 
 
 %% MOPSO Parameters
-if isequal(func_name, 'zdt4')
-    MaxIt = 1000;           % Maximum Number of Iterations
-else
-    MaxIt = 1000;
-end
+
 
 % MaxIt=1000;           % Maximum Number of Iterations
 nPop=50;            % Population Size
@@ -165,7 +162,9 @@ empty_particle.IsDominated=[];
 empty_particle.GridIndex=[];
 empty_particle.GridSubIndex=[];
 empty_particle.ChebychevDistance=[];
-empty_particle.ChebychevRank = [];
+empty_particle.ChebychevRank=[];
+empty_particle.CrowdingDistance=[];
+empty_particle.CrowdingDistanceRank=[];
 empty_particle.TargetRegionFlag = [];  % show whch target region the particle is in
 
 pop=repmat(empty_particle,nPop,1);
@@ -176,8 +175,6 @@ for i=1:nPop
     pop(i).Position=unifrnd(VarMin,VarMax,VarSize);  
     pop(i).Velocity=zeros(VarSize);   
     pop(i).Cost=CostFunction(pop(i).Position);
-    pop(i).ChebychevDistance=GetChebychevDistance(pop(i).Cost, TargetRegion);
-    pop(i).TargetRegionFlag=GetTargetRegionFlag(pop(i).Cost, TargetRegion);
     
     % Update Personal Best   
     pop(i).Best.Position=pop(i).Position;
@@ -191,8 +188,14 @@ pop=DetermineDomination(pop);
 % Update Repository
 rep=pop(~[pop.IsDominated]);
 
+% Get Target Region Flag of Particles in Repository
+rep=GetTargetRegionFlag(rep, TargetRegion);
+
 % Determine Chebychev Rank
-rep=DetermineChebychevRank(rep, epsilon);
+rep=DetermineChebychevRank(rep, TargetRegion, epsilon);
+
+% Calculalte Crowding Distance Rank
+rep=CalcCrowdingDistanceRank(rep, TargetRegion);
 
 % Grid=CreateGrid(rep,nGrid,alpha);
 % 
@@ -209,7 +212,7 @@ for it=1:MaxIt
     
     for i=1:nPop
 
-        leader=SelectLeader(rep, beta, pop(i));  % choose one with smallest chebychev rank
+        leader=SelectLeader(rep, beta);  
         
 %         figure(3)
 %         plot(leader.Cost(1), leader.Cost(2), 'o')
@@ -275,10 +278,6 @@ for it=1:MaxIt
             end
         end
         
-        % update chebychev distance and target region flag
-        pop(i).ChebychevDistance=GetChebychevDistance(pop(i).Cost, TargetRegion);
-        pop(i).TargetRegionFlag=GetTargetRegionFlag(pop(i).Cost, TargetRegion);
-        
     end
     
     pop=DetermineDomination(pop); % 源代码中少了这一行，导致算法结果不对
@@ -287,14 +286,23 @@ for it=1:MaxIt
     rep=[rep
          pop(~[pop.IsDominated])]; %#ok
     
-    % Determine Domination of New Resository Members
+    % Determine Domination of New Repository Members
     rep=DetermineDomination(rep);
     
     % Keep only Non-Dminated Members in the Repository
     rep=rep(~[rep.IsDominated]);
     
+    figure(1)
+    PlotPareto(rep, func_name, true_pf, TargetRegion);
+    
+    % Update Target Region Flag of Particles in the Repository
+    rep=GetTargetRegionFlag(rep, TargetRegion);
+    
     % Determine Chebychev Rank
-    rep=DetermineChebychevRank(rep, epsilon);
+    rep=DetermineChebychevRank(rep, TargetRegion, epsilon);
+    
+    % Calculalte Crowding Distance Rank
+    rep=CalcCrowdingDistanceRank(rep, TargetRegion);
     
     % Update Target Region
     TargetRegion=UpdateTargetRegion(rep, TargetRegion);
@@ -310,39 +318,41 @@ for it=1:MaxIt
     % Check if Repository is Full
     if numel(rep)>nRep
         
-        Extra=numel(rep)-nRep;
-        for e=1:Extra
-            rep=DeleteOneRepMember(rep,gamma);
-        end
+%         Extra=numel(rep)-nRep;
+        
+        rep = DeleteRepMembers(rep, nRep);
+        
+%         for e=1:Extra
+%             rep=DeleteOneRepMember(rep,gamma);
+%         end
         
     end
     
-    flag = HasArrivedPF(rep, true_pf);
-    
-    if flag     
-        % draw
-        h = figure(1);
-        PlotPareto(rep, func_name, true_pf, TargetRegion);
-%         set(h,'visible','off');
-        
-        % save plot
-        path = ['figure/', func_name];
-        if ~exist(path,'dir')
-            mkdir(path);
-        end
-        
-        filename = [path, '/', func_name, '-', num2str(It_no)];
-        saveas(h, filename, 'png');
-        break
-    end
+%     flag = HasArrivedPF(rep, true_pf);
+%     
+%     if flag     
+%         % draw
+%         h = figure(1);
+%         PlotPareto(rep, func_name, true_pf, TargetRegion);
+% %         set(h,'visible','off');
+%         
+%         % save plot
+%         path = ['figure/', func_name];
+%         if ~exist(path,'dir')
+%             mkdir(path);
+%         end
+%         
+%         filename = [path, '/', func_name, '-', num2str(It_no)];
+%         saveas(h, filename, 'png');
+%         break
+%     end
     
 %     % Plot Costs
 
 %     figure(1)
 %     PlotCosts(pop,rep, TargetRegion);
     
-    figure(1)
-    PlotPareto(rep, func_name, true_pf, TargetRegion);
+    
 
 %     pause(0.001);
     
@@ -351,5 +361,8 @@ for it=1:MaxIt
     
 
 end
+
+% pf_t_mopso = [rep.Cost];
+% hold on
 end
 

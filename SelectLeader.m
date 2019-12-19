@@ -11,7 +11,7 @@
 % Contact Info: sm.kalami@gmail.com, info@yarpiz.com
 %
 
-function leader=SelectLeader(rep, beta, pop)
+function leader=SelectLeader(rep, beta)
 
     
     
@@ -22,19 +22,60 @@ function leader=SelectLeader(rep, beta, pop)
 %     k = ceil(rand * numel(sci));
 %     leader = rep(sci(k));
 
-    %% Method 3: use chebychev rank
-    CheRank = [rep.ChebychevRank];
+%     %% Method 3: choose one with largest crowding distance rank or smallest chebychev rank
+% 
+%     CdRank = [rep.CrowdingDistanceRank];
+%     
+%     if max(CdRank) == 0
+%         
+%         CheRank = [rep.ChebychevRank];
+% 
+%         index = find(CheRank == min(CheRank));
+%     
+%     else
+%         
+%         index = find(CdRank == max(CdRank));
+%         
+%     end
+%     
+%     k = ceil(rand * numel(index));
+%         
+%     leader = rep(index(k));
     
-    t = min(CheRank, [], 1);
     
-    index = find(t == min(t));
+    %% Method 5: Method 3 + RouletteWheelSelection(When using chebychev rank)
     
-    if numel(index) <= numel(pop.ChebychevDistance)
+    CdRank = [rep.CrowdingDistanceRank];
+    
+    if max(CdRank) == 0
+        
+        CheRank = [rep.ChebychevRank];
+
+        N = min(CheRank, [], 1);
+        
+        % Selection Probabilities
+%         P = exp(-beta * N);
+        P = 1./((N + 1).^beta);
+        P = P / sum(P);
+
+        % Selected Cell Index
+        sci = RouletteWheelSelection(P);       
+    
+    else
+        
+        index = find(CdRank == max(CdRank));
+        
         k = ceil(rand * numel(index));
-        leader = rep(index(k));
-        return
+        
+        sci = index(k);    
+        
     end
     
+    % Leader
+    leader = rep(sci);
+
+    
+% ---------------------------------------------------------------------
 %     [~, k] = min(pop.ChebychevDistance); % 找到粒子与哪个目标区域距离最近
 %     
 %     
