@@ -99,7 +99,7 @@ function pop = AssignCrowdingDistanceRank(pop, TargetRegion)
         
     end
     
-%     CrowdingDistanceRank = max(CrowdingDistanceRank, [], 2);
+    CrowdingDistanceRank = max(CrowdingDistanceRank, [], 2);
     
     for i = 1 : nPop
         

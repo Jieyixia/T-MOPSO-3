@@ -1,4 +1,4 @@
-function TargetRegion=UpdateTargetRegion(pop, TargetRegion)
+function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion)
 % update the belief space using particles in the repository
 
     nTR = numel(TargetRegion);
@@ -11,6 +11,7 @@ function TargetRegion=UpdateTargetRegion(pop, TargetRegion)
         DominatingSet = IsDominated(pop, TargetRegion(j));
 %         DominatingSet = IsEpsilonDominated(pop, TargetRegion(j), 0.05);
         
+        % 如果有粒子支配当前的目标区域，则直接移动当前的目标区域
         if ~isempty(DominatingSet)  % the target region is dominated
             
             ds_lb = min(DominatingSet, [], 2)';
@@ -34,43 +35,107 @@ function TargetRegion=UpdateTargetRegion(pop, TargetRegion)
             TargetRegion(j).history.lb = TargetRegion(j).lb;
             TargetRegion(j).history.ub = TargetRegion(j).ub;
             
+            % 指示下面可以更新目标区域的多个维度
+            TargetRegion(j).update_flag = 1;
+            
             continue
             
         end
         
         index = TargetRegionFlag(j, :) == 1;  % 处于目标区域中的解
         
+        % 如果目标区域中没有解
+        % 首先要判断上一步进行了什么操作
+        
+        % 如果上一步是根据非支配解的位置调整目标区域
+        % 什么也不做
+        
+        % 如果上一步是直接调整多维目标区域
+        % 根据次数累计
+        
+        % 如果没有达到次数上限
+        % 次数加一
+        
+        
+        % 如果达到了次数上限
+        % 回退，目标区域中重新出现粒子，改变此时的标志，说明下一步开始
+        % 需要进入一维一维尝试的状态
+        
         if sum(index) == 0  % no particle in the target region
             
-%             % 判断是否处于探索状态
-%             if TargetRegion(j).attemp_obj == 0
-%                 
-%                 continue           
-%                 
-%             end
-%             
-%             % 避免出现原先目标区域中有解，移动完之后目标区域中无解但是又无法回退的情况
-%             
-%             TargetRegion(j).no_sol_count = TargetRegion(j).no_sol_count + 1;
-%             
-%             if TargetRegion(j).no_sol_count > 20
-%                 
-%                 % 回退50%
-%                 TargetRegion(j).lb = TargetRegion(j).lb + 0.5 * TargetRegion(j).delta;
-%                 TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
-%                 
-%                 % 重新开始目标区域更新的探索
-%                 TargetRegion(j).attemp_obj = 0;
-%                 TargetRegion(j).attemp_count = 0;
-%             end
+            % 判断是否处于探索状态
+            if TargetRegion(j).attemp_obj == 0
+                
+                continue           
+                
+            end
+            
+            if TargetRegion(j).update_flag == 1
+                % 判断当前解是否有改善
+                
+                % 如果有，更新目标区域，重新计数
+                if TargetRegion(j).no_sol_count > 20
+                    
+                    TargetRegion(j).lb = TargetRegion(j).history.lb;
+                    TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
+                    
+                    % 之后需要启动一维一维改变目标区域的机制
+                    TargetRegion(j).update_flag = 2;
+                    TargetRegion(j).no_sol_count = 0;
+                
+                else
+                    TargetRegion(j).no_sol_count = TargetRegion(j).no_sol_count + 1;
+        
+                end
+            end
+            
+            if TargetRegion(j).update_flag == 2
+                
+                % 判断当前解是否和之前相比有改善
+                % 如果有改善，更新目标区域，重新计数
+                
+                % 如果没有，+1 如果达到次数上限，回退
+                
+            end
+            
+            % 避免出现原先目标区域中有解，移动完之后目标区域中无解但是又无法回退的情况
+            
+            TargetRegion(j).no_sol_count = TargetRegion(j).no_sol_count + 1;
+            
+            if TargetRegion(j).no_sol_count > 20
+                
+                % 回退50%
+                TargetRegion(j).lb = TargetRegion(j).lb + 0.5 * TargetRegion(j).delta;
+                TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
+                
+                % 重新开始目标区域更新的探索
+                TargetRegion(j).attemp_obj = 0;
+                TargetRegion(j).attemp_count = 0;
+            end
             
             continue
         
         end
        
+        % 如果目标区域中存在粒子
         % 找到此时目标区域中粒子在各个目标维度上的上下界
         lower = min([pop(index).Cost], [], 2);
         upper = max([pop(index).Cost], [], 2);
+        
+        % 记录历史信息
+        TargetRegion(j).history.lb = TargetRegion(j).lb;
+        TargetRegion(j).history.ub = TargetRegion(j).ub;
+        
+        % 修改目标区域
+        TargetRegion(j).lb = TargetRegion(j).lb - TargetRegion(j).change_step.* TargetRegion(j).delta;
+        TargetRegion(j).update_flag = 1; % 说明是直接移动多维目标区域
+        
+        TargetRegion(j).no_sol_count = 0;
+        
+        
+        
+        
+        
         
         if TargetRegion(j).attemp_obj == 0  % 目标区域的任何一维还没有被单独更改
             TargetRegion(j).attemp_obj = 1;

@@ -43,7 +43,7 @@ function pop = DetermineChebychevRank(pop, TargetRegion, epsilon)
         end         
     end
     
-%     CheRank = min(CheRank, [], 1);
+    CheRank = min(CheRank, [], 1);
     
     for i = 1: nPop
         pop(i).ChebychevRank = CheRank(:, i);

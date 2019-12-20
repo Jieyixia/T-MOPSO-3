@@ -47,14 +47,19 @@ TargetRegion = repmat(empty_region, 1, 1);
 iter = zeros(MaxIter, numel(func));
 
 MaxIt = 1000;
-for func_no = 11 : 11
+for func_no = 5 : 11
     if func_no < 8
-        TargetRegion(1).lb = [1, 2,];
-        TargetRegion(1).ub = [1.4, 2.4]; 
+        TargetRegion(1).lb = [1, 0.2,];
+        TargetRegion(1).ub = [1.2, 0.4]; 
         TargetRegion(1).MinObj = [0, 0];
+%         TargetRegion(2).lb = [0.2, 0.8,];
+%         TargetRegion(2).ub = [0.4, 1]; 
+%         TargetRegion(2).MinObj = [0, 0];
         
-        if func_no == 3
+        
+        if func_no == 5
             TargetRegion(1).MinObj = [0, -0.7];
+%             TargetRegion(2).MinObj = [0, -0.7];
         end
         
 %         TargetRegion(1).lb = [1, 2,];
@@ -80,7 +85,7 @@ for func_no = 11 : 11
     end
     
     % Ëã·¨¿ªÊ¼--------------------------------------------------------------------------
-    for i = 2 : MaxIter
+    for i = 1 : MaxIter
         tic
         [rep_t_mopso, TR] = tmopso(seed(i), func{func_no}, TargetRegion, 0.005, i, MaxIt);
         toc
