@@ -1,6 +1,8 @@
-function PlotPareto(rep, func_name, true_pf)
+function PlotPareto_mopso(rep, func_name, true_pf)
 
     Cost = [rep.Cost];
+    
+    true_pf = true_pf';
     
     if size(Cost, 1) == 2
     
@@ -10,25 +12,17 @@ function PlotPareto(rep, func_name, true_pf)
     
     if strcmp(func_name, 'zdt3')
         
-        if length(true_pf) == 100
-            
-            sec = [19 24 20 19 18];
-            
-        else
-            
-            sec = [96 121 102 93 88];
-            
-        end
-        
+        sec = [316, 594, 781, 898, 1000];
+                       
         cur = 0;
         
         for i = 1 : 5
             
-            plot(true_pf(1, cur + 1 : cur + sec(i)), true_pf(2, cur + 1 : cur + sec(i)), 'c')
+            plot(true_pf(1, cur + 1 : sec(i)), true_pf(2, cur + 1 : sec(i)), 'c')
             
             hold on
             
-            cur = cur + sec(i);
+            cur = sec(i);
             
         end
         

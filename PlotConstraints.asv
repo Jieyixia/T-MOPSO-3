@@ -1,0 +1,20 @@
+function PlotConstraints(pop)
+% only draw 2D plot currently
+
+    n = numel(pop);   
+    CV = zeros(n, 1);
+    for i = 1 : n
+        CV(i) = sum(pop(i).CV);
+    end
+    
+    pop_costs=[pop.Cost];
+    
+    if size(pop_costs, 1) == 2
+        plot(pop_costs(1,:), pop_costs(2,:), 'ko');
+        hold on;
+       
+        xlabel('1^{st} Objective');
+        ylabel('2^{nd} Objective');
+    end
+    
+end

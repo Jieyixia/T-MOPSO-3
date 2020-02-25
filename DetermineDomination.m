@@ -22,11 +22,11 @@ function pop=DetermineDomination(pop)
     for i=1:nPop-1
         for j=i+1:nPop
             
-            if Dominates(pop(i),pop(j))
+            if ConstraintDominates(pop(i),pop(j))
                pop(j).IsDominated=true;
             end
             
-            if Dominates(pop(j),pop(i))
+            if ConstraintDominates(pop(j),pop(i))
                pop(i).IsDominated=true;
             end
             

@@ -1,23 +1,22 @@
-function dm = delta(repo, true_pf)
+function dm = delta(pop, true_pf)
 
-    n = numel(repo);
+    n = numel(pop);
     
-    current_pf = [repo.Cost]';
+    current_pf = [pop.Cost]';
     current_pf = sortrows(current_pf, 1);
     
-    true_pf = sortrows(true_pf', 1);
-    true_pf = true_pf';
+    true_pf = sortrows(true_pf, 1);
     
-    max_pf = [current_pf' true_pf(:, end)];
-    min_pf = [true_pf(:, 1) current_pf'];
+    max_pf = [current_pf; true_pf(end, :)];
+    min_pf = [true_pf(1, :); current_pf];
     
     diff = max_pf - min_pf;
     
     d = 0;
 
-    for i = 1 : numel(diff(:, 1))
+    for i = 1 : numel(pop(1).Cost)
 
-        d = d +  diff(i, :).^2;
+        d = d +  diff(:, i).^2;
 
     end
     

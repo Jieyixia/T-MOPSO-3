@@ -11,7 +11,7 @@
 % Contact Info: sm.kalami@gmail.com, info@yarpiz.com
 %
 
-function leader=SelectLeader(rep,beta)
+function leader=SelectLeader_mopso(rep,beta)
 
     % Grid Index of All Repository Members
     GI=[rep.GridIndex];

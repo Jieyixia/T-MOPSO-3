@@ -55,7 +55,7 @@ function leader=SelectLeader(rep, beta)
         
         % Selection Probabilities
 %         P = exp(-beta * N);
-        P = 1./((N + 1).^beta);
+        P = 1./((N + 1).^(beta + 1));
         P = P / sum(P);
 
         % Selected Cell Index

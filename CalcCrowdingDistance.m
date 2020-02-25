@@ -27,10 +27,18 @@ function pop=CalcCrowdingDistance(pop)
         [cj, so]=sort(Costs(j,:));
 
         d(so(1),j)=inf;
+        
+        r=abs(cj(1)-cj(end));
+        
+        if r==0
+            
+            r=1;
+            
+        end
 
         for i=2:n-1
 
-            d(so(i),j)=abs(cj(i+1)-cj(i-1))/abs(cj(1)-cj(end));
+            d(so(i),j)=abs(cj(i+1)-cj(i-1))/r;
 
         end
 

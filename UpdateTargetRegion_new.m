@@ -1,19 +1,37 @@
-function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion)
+function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
 % update the belief space using particles in the repository
 
     nTR = numel(TargetRegion);
     nObj = numel(TargetRegion(1).lb);
     
-    % Find Particles Within Each Target Region
+    % Particles Within Each Target Region
     TargetRegionFlag = [pop.TargetRegionFlag];
+%     ChebychevRank = [pop.ChebychevRank];
+    if contains(func_name, 'zdt')
+        if isequal(func_name, 'zdt4')
+            MaxCount = 50;         
+        else
+            MaxCount = 10;
+
+        end
+    else
+        MaxCount = 50;
+    end
     
     for j = 1 : nTR
-        DominatingSet = IsDominated(pop, TargetRegion(j));
-%         DominatingSet = IsEpsilonDominated(pop, TargetRegion(j), 0.05);
         
-        % 如果有粒子支配当前的目标区域，则直接移动当前的目标区域
-        if ~isempty(DominatingSet)  % the target region is dominated
+%         disp(['update_flag = ', num2str(TargetRegion.update_flag)])
+        
+        % Domination Relationship in Priority
+        DominatingSet = IsDominated(pop, TargetRegion(j));
+        
+        if ~isempty(DominatingSet) 
             
+            % update history information
+            TargetRegion(j).history.lb = TargetRegion(j).lb;
+            TargetRegion(j).history.ub = TargetRegion(j).ub;
+            
+            % 更新规则还需要进一步修改-------------------------------
             ds_lb = min(DominatingSet, [], 2)';
             ds_ub = max(DominatingSet, [], 2)';
             ds_delta = ds_ub - ds_lb;
@@ -25,224 +43,188 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion)
                 TargetRegion(j).lb = min(DominatingSet, [],  2)';
                 TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
             end
-                
-    
-            TargetRegion(j).attemp_obj = 0;  % set zero
+            % 更新规则还需要进一步修改------------------------------- 
+            
+            TargetRegion(j).update_flag = 0;
+            
+            % Set Zero
+            TargetRegion(j).attemp_obj = 0;
             TargetRegion(j).attemp_count = 0;
-            TargetRegion(j).change_step = 0.1 * ones(size(TargetRegion(j).lb));
-            
-            % update history information
-            TargetRegion(j).history.lb = TargetRegion(j).lb;
-            TargetRegion(j).history.ub = TargetRegion(j).ub;
-            
-            % 指示下面可以更新目标区域的多个维度
-            TargetRegion(j).update_flag = 1;
+            TargetRegion(j).no_sol_count = 0;
             
             continue
             
+        end   
+        
+        index = TargetRegionFlag(j, :) == 1;  % Particles in j-th Target Region        
+        
+        if TargetRegion(j).update_flag == -1  % Do Nothing
+            continue
+%             if sum(index) == 0
+%                 continue            
+%             end
+%             
+%             TargetRegion(j).update_flag = 3;
         end
         
-        index = TargetRegionFlag(j, :) == 1;  % 处于目标区域中的解
-        
-        % 如果目标区域中没有解
-        % 首先要判断上一步进行了什么操作
-        
-        % 如果上一步是根据非支配解的位置调整目标区域
-        % 什么也不做
-        
-        % 如果上一步是直接调整多维目标区域
-        % 根据次数累计
-        
-        % 如果没有达到次数上限
-        % 次数加一
         
         
-        % 如果达到了次数上限
-        % 回退，目标区域中重新出现粒子，改变此时的标志，说明下一步开始
-        % 需要进入一维一维尝试的状态
+        if TargetRegion(j).update_flag == 0            
+            if sum(index) == 0                             
+                continue                
+            end            
+        end
         
-        if sum(index) == 0  % no particle in the target region
+        if TargetRegion(j).update_flag < 2 
             
-            % 判断是否处于探索状态
-            if TargetRegion(j).attemp_obj == 0
-                
-                continue           
-                
-            end
+             if sum(index) > 0  % Exist Paticles
+                 
+                 TargetRegion(j) = UpdateAllDimensions(TargetRegion(j));    
+                 TargetRegion(j).update_flag = 1;
+                 
+             else  % No Particles
+                 
+                 count = TargetRegion(j).no_sol_count;
+                 
+                 if count == 0                     
+                     TargetRegion(j).history.sol.center = mean([pop.Cost], 2)';                
+                     TargetRegion(j).no_sol_count = 1;
+                     TargetRegion(j).update_flag = 1;
+                 else                     
+                     [TargetRegion(j), flag] = PopImproved(TargetRegion(j), pop);                    
+                     
+                     if ~flag                         
+                         count = count + 1;                      
+                         if count <= MaxCount                          
+                             TargetRegion(j).no_sol_count = count;                             
+                         else                             
+                             TargetRegion(j) = RollBack(TargetRegion(j));                             
+                             TargetRegion(j).update_flag = 2;                             
+                         end                                            
+                     end                                       
+                 end
+                 % 新增，目标区域内没有粒子的情况下，每次都更新该历史信息
+%                  TargetRegion(j).history.sol.center = mean([pop.Cost], 2)';
+             end
+             
+             continue
             
-            if TargetRegion(j).update_flag == 1
-                % 判断当前解是否有改善
-                
-                % 如果有，更新目标区域，重新计数
-                if TargetRegion(j).no_sol_count > 20
-                    
-                    TargetRegion(j).lb = TargetRegion(j).history.lb;
-                    TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
-                    
-                    % 之后需要启动一维一维改变目标区域的机制
-                    TargetRegion(j).update_flag = 2;
-                    TargetRegion(j).no_sol_count = 0;
-                
-                else
-                    TargetRegion(j).no_sol_count = TargetRegion(j).no_sol_count + 1;
+        end
         
-                end
-            end
-            
-            if TargetRegion(j).update_flag == 2
+        % Temination Criterion
+        if sum(TargetRegion(j).step_size > 0.02) == 0 && TargetRegion(j).update_flag == 3 
+                % 需要根据具体情况来判断是否需要回退
                 
-                % 判断当前解是否和之前相比有改善
-                % 如果有改善，更新目标区域，重新计数
-                
-                % 如果没有，+1 如果达到次数上限，回退
-                
-            end
-            
-            % 避免出现原先目标区域中有解，移动完之后目标区域中无解但是又无法回退的情况
-            
-            TargetRegion(j).no_sol_count = TargetRegion(j).no_sol_count + 1;
-            
-            if TargetRegion(j).no_sol_count > 20
-                
-                % 回退50%
+                % Roll Back 50%
                 TargetRegion(j).lb = TargetRegion(j).lb + 0.5 * TargetRegion(j).delta;
                 TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
                 
-                % 重新开始目标区域更新的探索
-                TargetRegion(j).attemp_obj = 0;
-                TargetRegion(j).attemp_count = 0;
-            end
-            
-            continue
-        
-        end
-       
-        % 如果目标区域中存在粒子
-        % 找到此时目标区域中粒子在各个目标维度上的上下界
-        lower = min([pop(index).Cost], [], 2);
-        upper = max([pop(index).Cost], [], 2);
-        
-        % 记录历史信息
-        TargetRegion(j).history.lb = TargetRegion(j).lb;
-        TargetRegion(j).history.ub = TargetRegion(j).ub;
-        
-        % 修改目标区域
-        TargetRegion(j).lb = TargetRegion(j).lb - TargetRegion(j).change_step.* TargetRegion(j).delta;
-        TargetRegion(j).update_flag = 1; % 说明是直接移动多维目标区域
-        
-        TargetRegion(j).no_sol_count = 0;
-        
-        
-        
-        
-        
-        
-        if TargetRegion(j).attemp_obj == 0  % 目标区域的任何一维还没有被单独更改
-            TargetRegion(j).attemp_obj = 1;
-            
-            % 新增------------------------------------------------
-            % 记录历史信息
-            TargetRegion(j).history.lb = TargetRegion(j).lb;
-            TargetRegion(j).history.ub = TargetRegion(j).ub;
-            % 新增------------------------------------------------
-            
-            % 尝试修改目标区域的第一个维度
-            TargetRegion(j).lb(1) = TargetRegion(j).lb(1) - TargetRegion(j).change_step(1) * TargetRegion(j).delta(1);
-            TargetRegion(j).lb(1) = max(TargetRegion(j).lb(1), TargetRegion(j).MinObj(1));  % lower bound of each dimension
-            TargetRegion(j).ub(1) = TargetRegion(j).lb(1) + TargetRegion(j).delta(1);
-            
-            % 记录修改目标区域前，目标区域内粒子的上下界，作为历史信息
-            TargetRegion(j).history.tr_sol.lb = lower;  
-            TargetRegion(j).history.tr_sol.ub = upper;
-            TargetRegion(j).history.tr_sol.delta = upper - lower;
-            
-            TargetRegion(j).no_sol_count = 0;
-            
-            continue
-            
-        end
-        
-        if IsImproved(lower, upper, TargetRegion(j)) % 如果得到的解有所改善
-            
-            % 更新历史信息
-            TargetRegion(j).history.lb = TargetRegion(j).lb;
-            TargetRegion(j).history.ub = TargetRegion(j).ub;
-            
-            % 增加变化的幅度
-            n = TargetRegion(j).attemp_obj;
-            TargetRegion(j).change_step(n) = min(TargetRegion(j).change_step(n) * 2, 0.1);
+                % Stop Updating
+                TargetRegion(j).update_flag = -1;
 
-            % 看下一维
-            TargetRegion(j).attemp_obj = n + 1;
-            if TargetRegion(j).attemp_obj > nObj
+                continue
+                
+        end
+            
+        % update_flag >=2的情况
+        if sum(index) > 0
+
+            if TargetRegion(j).attemp_obj == 0 || TargetRegion(j).update_flag == 3
+                
+                % Store History Information
+                TargetRegion(j).history.lb = TargetRegion(j).lb;
+                TargetRegion(j).history.ub = TargetRegion(j).ub;
+
+                % Update Current Dimension
                 TargetRegion(j).attemp_obj = 1;
+                TargetRegion(j) = UpdateCurrentDimension(TargetRegion(j), pop(index));
+                              
+            else
+                if IsImproved(TargetRegion(j), pop(index))
+                    
+                    % Store History Information
+                    TargetRegion(j).history.lb = TargetRegion(j).lb;
+                    TargetRegion(j).history.ub = TargetRegion(j).ub;
+                    
+                    % Increase Step Size
+                    n = TargetRegion(j).attemp_obj;
+                    TargetRegion(j) = IncreaseStepSize(TargetRegion(j), n); 
+                    
+                    % Update Next Dimension
+                    n = n + 1;
+                    if n > nObj
+                        n = 1;
+                    end
+                    TargetRegion(j).attemp_obj = n;
+                    TargetRegion(j) = UpdateCurrentDimension(TargetRegion(j), pop(index));
+                    
+                else
+                    count = TargetRegion(j).attemp_count;
+                    count = count + 1;
+                    if count <= MaxCount
+                        TargetRegion(j).attemp_count = count;
+                    else
+                        
+                        % Roll Back
+                        TargetRegion(j) = RollBack(TargetRegion(j));
+                        
+                        % Decrease Step Size
+                        n = TargetRegion(j).attemp_obj;
+                        TargetRegion(j) = DecreaseStepSize(TargetRegion(j), n);
+                        
+                        % Update Next Dimension
+                        n = n + 1;
+                        if n > nObj
+                            n = 1;
+                        end
+                        TargetRegion(j).attemp_obj = n;
+                        TargetRegion(j) = UpdateCurrentDimension(TargetRegion(j), pop(index));
+                        
+                    end                                 
+                end                
             end
-            TargetRegion(j).attemp_count = 0;
-
-            n = TargetRegion(j).attemp_obj;
-            TargetRegion(j).lb(n) = TargetRegion(j).lb(n) - TargetRegion(j).change_step(n) * TargetRegion(j).delta(n);
-            TargetRegion(j).lb(n) = max(TargetRegion(j).lb(n), TargetRegion(j).MinObj(n));  % lower bound of each dimension
-            TargetRegion(j).ub(n) = TargetRegion(j).lb(n) + TargetRegion(j).delta(n); 
             
-            % 新增------------------------------------------------
-            % 记录改变目标区域前的 目标区域中非支配解的 上下界
-            TargetRegion(j).history.tr_sol.lb = lower;                                                                
-            TargetRegion(j).history.tr_sol.ub = upper;
-            TargetRegion(j).history.tr_sol.delta = upper - lower;
-            TargetRegion(j).no_sol_count = 0;
-            % 新增------------------------------------------------
- 
-        else  % 如果没有
+            TargetRegion(j).update_flag = 2;
             
-            TargetRegion(j).attemp_count =  TargetRegion(j).attemp_count + 1;
-
-            if TargetRegion(j).attemp_count > 10  
+        else
+            
+            if TargetRegion(j).attemp_obj == 0 || TargetRegion(j).update_flag == 2
+                TargetRegion(j).history.sol.center = mean([pop.Cost], 2)';
+                TargetRegion(j).attemp_obj = 1;
+                TargetRegion(j) = UpdateCurrentDimension(TargetRegion(j), []);
                 
-                % 利用历史信息回退
-                TargetRegion(j).lb = TargetRegion(j).history.lb;
-                TargetRegion(j).ub = TargetRegion(j).history.ub;
-                
-                % 新增---------------------------------------------
-                % 减小这一维变化的幅度
-                n = TargetRegion(j).attemp_obj;
-                TargetRegion(j).change_step(n) = max(TargetRegion(j).change_step(n) / 2, 0.0125);
-                % 新增---------------------------------------------
-                
-                % 看下一维
-                TargetRegion(j).attemp_obj = TargetRegion(j).attemp_obj + 1;
-                if TargetRegion(j).attemp_obj > nObj
-                    TargetRegion(j).attemp_obj = 1;
+            else
+                [TargetRegion(j), flag] = PopImproved(TargetRegion(j), pop);
+                if ~flag
+                    count = TargetRegion(j).attemp_count;
+                    count = count + 1;                      
+                    if count <= MaxCount                            
+                        TargetRegion(j).attemp_count = count;                             
+                    else 
+                        
+                        % Decrease Step Size
+                        n = TargetRegion(j).attemp_obj;
+                        TargetRegion(j) = DecreaseStepSize(TargetRegion(j), n);
+                        
+                        % Roll Back
+                        TargetRegion(j) = RollBack(TargetRegion(j));
+                        
+                        % Update Next Dimension
+                        n = n + 1;
+                        if n > nObj
+                            n = 1;
+                        end
+                        TargetRegion(j).attemp_obj = n;
+                        TargetRegion(j) = UpdateCurrentDimension(TargetRegion(j), pop(index));                                                       
+                    end  
                 end
-                TargetRegion(j).attemp_count = 0;
-                
-                n = TargetRegion(j).attemp_obj;
-                
-%                 % 以下代表停止对这一维的探索
-%                 if TargetRegion(j).change_step(n) < 1e-3
-%                     continue
-%                 end
-                
-                % 始终要进行探索
-                TargetRegion(j).lb(n) = TargetRegion(j).lb(n) - TargetRegion(j).change_step(n) * TargetRegion(j).delta(n);
-                TargetRegion(j).lb(n) = max(TargetRegion(j).lb(n), TargetRegion(j).MinObj(n));  % lower bound of each dimension
-                TargetRegion(j).ub(n) = TargetRegion(j).lb(n) + TargetRegion(j).delta(n);
-                
-                TargetRegion(j).change_step(n) = TargetRegion(j).change_step(n) / 2;
-                
-                % 新增------------------------------------------------
-                % 记录改变目标区域前的 目标区域中非支配解的 上下界
-                TargetRegion(j).history.tr_sol.lb = lower;                                                                
-                TargetRegion(j).history.tr_sol.ub = upper;
-                TargetRegion(j).history.tr_sol.delta = upper - lower;
-                TargetRegion(j).no_sol_count = 0;
-                % 新增------------------------------------------------
-            end
-        end   
-        
-%         % 不管目标区域中的解是否有改善，都记录目标区域中解的上下界
-%         TargetRegion(j).history.tr_sol_lb = lower;                                                                
-%         TargetRegion(j).history.tr_sol_ub = upper;
-        
+            end  
+            
+%             TargetRegion(j).history.sol.center = mean([pop.Cost], 2)';
+     
+            TargetRegion(j).update_flag = 3;
+        end
+                 
     end
  
 end
@@ -260,42 +242,163 @@ function DominatingSet = IsDominated(pop, TargetRegion)
     end
 
 end
-% 
-% function DominatingSet = IsEpsilonDominated(pop, TargetRegion, epsilon)
-%     nPop = numel(pop);
-%     DominatingSet = [];
-%     for i = 1 : nPop
-%         lower = TargetRegion.lb';
-%         epsilon_cost = pop(i).Cost - epsilon * TargetRegion.delta'; 
-%         if all(epsilon_cost <= lower) && any(epsilon_cost < lower)
-%             DominatingSet = [DominatingSet epsilon_cost]; %#ok<AGROW>         
-%         end
-%     end
-% end
 
-function flag = IsImproved(lower, upper, TargetRegion)
-% lower, upper为当前目标区域内粒子范围的上下界
+
+function flag = IsImproved(TargetRegion, pop)
+
+    flag = 1;
     
-%     flag = 0;
-% 
-%     % 如果在所有目标维度上的解都有改善
-%     if all(lower < TargetRegion.history.tr_sol.lb)
+    return
+       
+%     n = TargetRegion.attemp_obj;
+%     
+%     lower = min([pop.Cost], [], 2);
+%     
+%     if lower(n) < TargetRegion.history.tr_sol.lb(n)
+%         
 %         flag = 1;
+%         
+%         disp('IsImproved')
+%         
 %     else
-%         % 或者所有目标维度上解的范围没有减小超过10%
-%         delta = upper - lower;
-%         if delta > 0.9 * TargetRegion.history.tr_sol.delta
-%             flag = 1;
-%         end
+%         
+%         flag = 0;
+%         
 %     end
     
-   
+end
+
+function [TargetRegion, flag] = PopImproved(TargetRegion, pop)
+
+    new_center = mean([pop.Cost], 2)';    
+    old_center = TargetRegion.history.sol.center;
     
-    % 之前的 效果提升的判断标准
-    n = TargetRegion.attemp_obj;
-    if lower(n) < TargetRegion.history.tr_sol.lb(n)
-        flag = 1;
-    else
+    t1 = (old_center - new_center) ./ old_center;
+    
+    if sum(t1) <= 0
+        
         flag = 0;
+        
+        return
+        
     end
+            
+    tr_ub = new_center;
+    tr_lb = tr_ub - TargetRegion.delta;
+    tr_lb = max(tr_lb, TargetRegion.min_obj);
+    
+%     t2 = (TargetRegion.lb - tr_lb) ./ TargetRegion.lb;
+    t2 = TargetRegion.lb - tr_lb;
+    
+%     disp(['t1=[', num2str(t1(1)), ', ', num2str(t1(2)), '], ', 't2=[', num2str(t2(1)), ', ', num2str(t2(2)),']'])
+    
+    if sum(t2) <= 0
+        
+        flag = 0;
+        
+        return
+        
+    end
+    
+    flag = 1;
+
+    TargetRegion.step_size(tr_lb == TargetRegion.min_obj) = 0.0125;
+    TargetRegion.step_size(tr_lb > TargetRegion.min_obj) = 0.1;                         
+
+    % Store History Information
+    TargetRegion.history.sol.center = new_center;
+
+    % Update Target Region
+    TargetRegion.lb = tr_lb;
+    TargetRegion.ub = tr_lb + TargetRegion.delta;
+    TargetRegion.no_sol_count = 0;
+     
+%     disp(['PopImproved，sum(t1)=', num2str(sum(t1)), ' sum(t2)=', num2str(sum(t2))])
+end
+
+function TargetRegion = RollBack(TargetRegion)
+
+    TargetRegion.lb = TargetRegion.history.lb;
+    TargetRegion.ub = TargetRegion.history.ub;
+    
+    TargetRegion.attemp_count = 0;
+    TargetRegion.no_sol_count = 0;
+    
+%     disp('RollBack')
+    
+end
+
+function TargetRegion = UpdateAllDimensions(TargetRegion)
+
+    % Store history information 
+    TargetRegion.history.lb = TargetRegion.lb;
+    TargetRegion.history.ub = TargetRegion.ub;
+
+    % Update Target Region
+    TargetRegion.lb = TargetRegion.lb - TargetRegion.step_size.* TargetRegion.delta;
+    TargetRegion.lb = max(TargetRegion.lb, TargetRegion.min_obj);
+    TargetRegion.ub = TargetRegion.lb + TargetRegion.delta;
+    
+    % Update Step Size
+    index = TargetRegion.lb == TargetRegion.min_obj;
+    TargetRegion.step_size(index) = 0.0125; 
+    
+    % Set Zero
+    TargetRegion.attemp_obj = 0;
+    TargetRegion.attemp_count = 0;
+    TargetRegion.no_sol_count = 0;
+    
+%     disp('Update All Dimensions')
+    
+end
+
+function TargetRegion = UpdateCurrentDimension(TargetRegion, pop)
+
+    % Store history information 
+    TargetRegion.history.lb = TargetRegion.lb;
+    TargetRegion.history.ub = TargetRegion.ub;
+    
+    % Get Which Dimension
+    n = TargetRegion.attemp_obj;
+    
+    % Set Zero
+    TargetRegion.attemp_count = 0;
+    TargetRegion.no_sol_count = 0;
+    
+    % Update n-th Dimension
+    TargetRegion.lb(n) = TargetRegion.lb(n) - TargetRegion.step_size(n) * TargetRegion.delta(n);
+    TargetRegion.lb(n) = max(TargetRegion.lb(n), TargetRegion.min_obj(n));  
+    TargetRegion.ub(n) = TargetRegion.lb(n) + TargetRegion.delta(n);
+    
+    % Update Step Size
+    if TargetRegion.lb(n) == TargetRegion.min_obj(n)
+        TargetRegion.step_size(n) = 0.0125;
+    end
+
+    if isempty(pop)
+        return
+    end
+    
+    % Store History Infomation
+    lower = min([pop.Cost], [], 2);
+    upper = max([pop.Cost], [], 2);
+    TargetRegion.history.tr_sol.lb = lower;                                                                
+    TargetRegion.history.tr_sol.ub = upper;
+    TargetRegion.history.tr_sol.delta = upper - lower;
+    TargetRegion.no_sol_count = 0;
+    
+%     disp('Update Current Dimension')
+    
+end
+
+function TargetRegion = DecreaseStepSize(TargetRegion, n)
+
+    TargetRegion.step_size(n) = max(TargetRegion.step_size(n) / 2, 0.0125);
+    
+end
+
+function TargetRegion = IncreaseStepSize(TargetRegion, n)
+
+    TargetRegion.step_size(n) = min(TargetRegion.step_size(n) * 2, 0.1);
+    
 end
