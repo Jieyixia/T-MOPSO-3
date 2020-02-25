@@ -31,7 +31,7 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
             TargetRegion(j).history.lb = TargetRegion(j).lb;
             TargetRegion(j).history.ub = TargetRegion(j).ub;
             
-            % ¸üÐÂ¹æÔò»¹ÐèÒª½øÒ»²½ÐÞ¸Ä-------------------------------
+            % ï¿½ï¿½ï¿½Â¹ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Ò»ï¿½ï¿½ï¿½Þ¸ï¿½-------------------------------
             ds_lb = min(DominatingSet, [], 2)';
             ds_ub = max(DominatingSet, [], 2)';
             ds_delta = ds_ub - ds_lb;
@@ -43,7 +43,7 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
                 TargetRegion(j).lb = min(DominatingSet, [],  2)';
                 TargetRegion(j).ub = TargetRegion(j).lb + TargetRegion(j).delta;
             end
-            % ¸üÐÂ¹æÔò»¹ÐèÒª½øÒ»²½ÐÞ¸Ä------------------------------- 
+            % ï¿½ï¿½ï¿½Â¹ï¿½ï¿½ï¿½ï¿½ï¿½Òªï¿½ï¿½Ò»ï¿½ï¿½ï¿½Þ¸ï¿½------------------------------- 
             
             TargetRegion(j).update_flag = 0;
             
@@ -103,7 +103,7 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
                          end                                            
                      end                                       
                  end
-                 % ÐÂÔö£¬Ä¿±êÇøÓòÄÚÃ»ÓÐÁ£×ÓµÄÇé¿öÏÂ£¬Ã¿´Î¶¼¸üÐÂ¸ÃÀúÊ·ÐÅÏ¢
+                 % ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½Ã¿ï¿½Î¶ï¿½ï¿½ï¿½ï¿½Â¸ï¿½ï¿½ï¿½Ê·ï¿½ï¿½Ï¢
 %                  TargetRegion(j).history.sol.center = mean([pop.Cost], 2)';
              end
              
@@ -113,7 +113,7 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
         
         % Temination Criterion
         if sum(TargetRegion(j).step_size > 0.02) == 0 && TargetRegion(j).update_flag == 3 
-                % ÐèÒª¸ù¾Ý¾ßÌåÇé¿öÀ´ÅÐ¶ÏÊÇ·ñÐèÒª»ØÍË
+                % ï¿½ï¿½Òªï¿½ï¿½ï¿½Ý¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½Ç·ï¿½ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½
                 
                 % Roll Back 50%
                 TargetRegion(j).lb = TargetRegion(j).lb + 0.5 * TargetRegion(j).delta;
@@ -126,7 +126,7 @@ function TargetRegion=UpdateTargetRegion_new(pop, TargetRegion, func_name)
                 
         end
             
-        % update_flag >=2µÄÇé¿ö
+        % update_flag >=2ï¿½ï¿½ï¿½ï¿½ï¿½
         if sum(index) > 0
 
             if TargetRegion(j).attemp_obj == 0 || TargetRegion(j).update_flag == 3
@@ -313,7 +313,7 @@ function [TargetRegion, flag] = PopImproved(TargetRegion, pop)
     TargetRegion.ub = tr_lb + TargetRegion.delta;
     TargetRegion.no_sol_count = 0;
      
-%     disp(['PopImproved£¬sum(t1)=', num2str(sum(t1)), ' sum(t2)=', num2str(sum(t2))])
+%     disp(['PopImprovedï¿½ï¿½sum(t1)=', num2str(sum(t1)), ' sum(t2)=', num2str(sum(t2))])
 end
 
 function TargetRegion = RollBack(TargetRegion)

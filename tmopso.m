@@ -240,11 +240,14 @@ for i=1:nPop
     
 end
 
+% relax constraints and make all solutions feasible
+Epsilon = max([pop.CV], [], 2);
+
 % Determine Domination
 pop=DetermineDomination(pop);
 
 % Update Repository
-rep=pop(~[po211p.IsDominated]);
+rep=pop(~[pop.IsDominated]);
 
 % Get Target Region Flag of Particles in Repository
 rep=GetTargetRegionFlag(rep, TargetRegion);
